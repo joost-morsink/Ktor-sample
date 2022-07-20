@@ -1,59 +1,82 @@
 package com.example.plugins
 
-import io.ktor.routing.*
-import io.ktor.http.*
+import com.example.classes.FailureCode
+import com.example.classes.Res
+import com.example.classes.StatusCode
+import com.example.controllers.Controller
+import com.example.controllers.PersonController
 import io.ktor.application.*
-import io.ktor.response.*
+import io.ktor.http.*
 import io.ktor.request.*
-import kotlinx.serialization.Serializable
+import io.ktor.response.*
+import io.ktor.routing.*
 
 fun Application.configureRouting() {
     routing {
-        homePage()
-        helpPage()
-        personPage()
+        person()
     }
 }
 
-fun Routing.homePage(){
-    get("/") {
-        call.respondText("Hello World!")
+suspend inline fun <reified T : Any> ApplicationCall.respondResult(res: Res<T>) {
+    when (res) {
+        is Res.Success -> respond(
+            when (res.statusCode) {
+                StatusCode.Ok -> HttpStatusCode.OK
+                StatusCode.NoContent -> HttpStatusCode.NoContent
+                StatusCode.Created -> HttpStatusCode.Created
+            }, res.value
+        )
+        is Res.Failure -> respond(
+            when (res.failure) {
+                FailureCode.NotFound -> HttpStatusCode.NotFound
+                FailureCode.Unauthorized -> HttpStatusCode.Unauthorized
+                FailureCode.ValidationError -> HttpStatusCode.BadRequest
+            },
+            /**
+             * FIXME: I want to create some sort of mapping elsewhere, so it can automatically resolve the messages.
+             *
+             * Also, maybe I want to not only return a string but something with a bit more info;
+             *
+             * {
+             *    "statusCode": 401,
+             *    "errorCode": "UNAUTHORIZED_ERROR",
+             *    "message": "Signature is not valid"
+             * }
+             *
+             */
+            when (res.failure) {
+                FailureCode.NotFound -> "Not Found, are you looking good enough?"
+                FailureCode.Unauthorized -> "Unauthorized, go away!"
+                FailureCode.ValidationError -> "Bad Request, you screwed up"
+            }
+        )
     }
 }
-fun Routing.helpPage() {
-    get("/help") {
-        call.respondText("<h1>HELP!</h1>", ContentType.parse("text/html"))
-    }
-}
-fun Routing.personPage() {
+
+fun Routing.person() {
     val controller = PersonController()
     addController(controller, "/person")
 }
 
-interface Controller<T> {
-    fun get() : T
-    fun put(item: T) : Unit
-}
-
 inline fun <reified T : Any, C> Routing.addController(controller: C, path: String) where C : Controller<T> {
     get(path) {
-        call.respond(controller.get())
-    }
-    put(path) {
-        val item = call.receive<T>()
-        controller.put(item)
-        call.respond(HttpStatusCode.OK)
-    }
-}
-class PersonController() : Controller<Person> {
-    var person = Person("Joost", "Morsink")
-    override fun get() = person
-    override fun put(newPerson: Person) {
-        person = newPerson
+        call.respondResult(controller.get())
     }
 
-}
-@Serializable
-data class Person(val firstName:String, val lastName:String) {
+    get("$path/{id}") {
+        call.respondResult(controller.getOne(call.parameters["id"]))
+    }
 
+    post(path) {
+        call.respondResult(controller.create(call.receive()))
+    }
+
+    put("$path/{id}") {
+        call.respondResult(controller.put(call.parameters["id"], call.receive()))
+    }
+
+    delete("$path/{id}") {
+        call.respondResult(controller.delete(call.parameters["id"]))
+    }
 }
+

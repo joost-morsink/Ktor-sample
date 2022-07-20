@@ -1,22 +1,22 @@
 package com.example
 
+import com.example.plugins.configureHTTP
+import com.example.plugins.configureRouting
+import com.example.plugins.configureSecurity
+import com.example.plugins.configureSerialization
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import com.example.plugins.*
 
+/**
+ * TODO:
+ *
+ * 1. add message to code
+ */
 fun main() {
-    test("Hello world") {
-        println("Bye $this")
-    }
     embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
         configureRouting()
         configureSecurity()
         configureHTTP()
         configureSerialization()
     }.start(wait = true)
-}
-
-fun test(str: String, block: String.() -> Unit){
-    println(str)
-    "Joost".block()
 }
