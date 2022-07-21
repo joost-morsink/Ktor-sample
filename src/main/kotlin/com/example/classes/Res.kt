@@ -22,6 +22,18 @@ enum class StatusCode {
 enum class FailureCode {
     NotFound, ValidationError, Unauthorized
 }
+sealed class FailureCode2 {
+    data class NotFound() : FailureCode2()
+    data class NotAuthorized() : FailureCode2()
+    data class BadRequest(val messages: List<ValidationMessage>) : FailureCode2()
+}
+
+data class WithMetadata<T>(val metadata:Metadata, val data:T)
+data class Metadata(val location:String?, val asynchronous: Boolean)
+
+data class ValidationMessage(val message:String, val code:String, val severity:Severity)
+enum class Severity { Warning, Error }
+
 
 fun FailureCode.toResult() = Res.Failure(this)
 fun <T> T.toResult() = Res.Success(this)
