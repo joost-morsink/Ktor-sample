@@ -38,3 +38,27 @@ enum class Severity { Warning, Error }
 fun FailureCode.toResult() = Res.Failure(this)
 fun <T> T.toResult() = Res.Success(this)
 fun <T> T.toResult(statusCode: StatusCode) = Res.Success(this, statusCode)
+
+//fun <T> List<Res<T>>.nameoffunction() : Res<List<T>>
+
+fun <T> List<Res<T>>.dropFailures() : List<T>
+{
+    var lst = mutableListOf<T>()
+    for(res in this){
+        if(res is Res.Success<T>){
+            lst.add(res.value)
+        }
+    }
+    return lst.toList()
+}
+fun <T> List<Res<T>>.allSuccesses() : Res<List<T>> {
+    var lst = mutableListOf<T>()
+    for(res in this){
+        if(res is Res.Success<T>){
+            lst.add(res.value)
+        } else {
+            return Res.Failure(FailureCode.ValidationError)
+        }
+    }
+    return Res.Success(lst.toList())
+}

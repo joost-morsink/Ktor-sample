@@ -20,6 +20,9 @@ fun <T,U> Res<T>.flatMap(f: (T) -> Res<U>) =
 // Res<T> , (T -> U) -> Res<U>
 // List<T> , (T -> List<U>) -> List<U>
 // Res<T>, (T -> Res<U>) -> Res<U>
+
+//M<T> , (T -> M<U>) -> M<U>
+
 fun main(){
     val x = Lazy<Int>{ 3.also { println("eval1")} }
     val y = x.flatMap { Lazy { it+4 } }
@@ -42,4 +45,38 @@ fun <T,U> Lazy<T>.map(f: (T) -> U)
 // Lazy<T> , (T->Lazy<U>) -> Lazy<U>
 fun <T,U> Lazy<T>.flatMap(f: (T) -> Lazy<U>)
     = Lazy { f(value).value }
+
+// SideEffectful<T> , ((T) -> SideEffectful<U> ) -> SideEffectful<U>
+
+class SideEffectful<T>(private val value: T) {
+    fun <U> sequence(f: (T) -> SideEffectful<U>) : SideEffectful<U>
+            = f(this.value)
+
+    companion object {
+        fun <T,U,V> SideEffectful<(T,U) -> V>.apply(first : SideEffectful<T>, second:SideEffectful<U>) : SideEffectful<V> {
+            val f = this.value
+            val x = first.value
+            val y = second.value
+            return SideEffectful(f(x,y))
+        }
+    }
+}
+
+fun getValueFromApi() : SideEffectful<Int> {
+    return SideEffectful(42)
+}
+
+fun realPrintln(str: String) : SideEffectful<Unit>
+{
+    kotlin.io.println(str)
+    return SideEffectful(Unit)
+
+
+}
+
+fun test() {
+    val x = getValueFromApi().sequence { realPrintln(it.toString()) }
+}
+
+//  SideEffectful((T,U) -> V), SideEffectful<T> , SideEffectful<U> -> SideEffectful<V>
 
